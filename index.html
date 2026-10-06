@@ -172,6 +172,7 @@ footer{text-align:center;color:var(--muted);font-family:"PT Sans",sans-serif;fon
 <!-- 1. КІРІСПЕ -->
 <section id="kiris" class="active">
   <div class="portrait" id="portrait">
+    <img id="pic" src="farabi.jpg" alt="Әл-Фараби портреті" hidden>
     <svg class="orn" id="orn" viewBox="0 0 200 200" aria-hidden="true">
       <path d="M100 8 L122 78 L192 100 L122 122 L100 192 L78 122 L8 100 L78 78 Z"/>
       <path d="M35 35 L108 68 L165 35 L132 108 L165 165 L92 132 L35 165 L68 92 Z"/>
@@ -189,13 +190,6 @@ footer{text-align:center;color:var(--muted);font-family:"PT Sans",sans-serif;fon
     <div class="fact"><strong>870 ж.</strong>Отырар (Фараб) қаласында туған</div>
     <div class="fact"><strong>Екінші ұстаз</strong>Аристотельден кейінгі ұлы ойшыл атағы</div>
     <div class="fact"><strong>1150 жыл</strong>2020 жылы аталып өткен мерейтой</div>
-  </div>
-
-  <h3>Өлеңнің видеосы</h3>
-  <div class="card">
-    <p id="vidEmpty" class="lead" style="margin:0">Өлеңнің бейнежазбасына (YouTube т.б.) сілтеме қойыңыз. Оқушылар батырманы басып, видеоны жаңа бетте көреді.</p>
-    <div class="row" id="vidShow" hidden><a class="btn" id="vidLink" target="_blank" rel="noopener" style="text-decoration:none">▶ Видеоны көру</a><button class="btn ghost" id="vidEditBtn">Сілтемені өзгерту</button></div>
-    <div id="vidEdit"><div class="row"><input type="text" id="vidIn" placeholder="https://www.youtube.com/watch?v=..."><button class="btn" id="vidSave">Сақтау</button></div></div>
   </div>
 
   <h3>Өлең мәтіні</h3>
@@ -365,34 +359,39 @@ nb.forEach(b=>b.addEventListener('click',()=>{nb.forEach(x=>x.setAttribute('aria
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('active',s.id===b.dataset.s));
   document.querySelector('main').scrollIntoView({behavior:'smooth'})}));
 
-/* Portrait */
-function showPic(){const d=store.get('farabi-pic');if(d){let img=$('#portrait img');if(!img){img=document.createElement('img');img.alt='Әл-Фараби портреті';$('#portrait').prepend(img)}img.src=d;$('#orn').style.display='none';$('#picBtn').textContent='Портретті ауыстыру'}}
-showPic();
+/* Portrait: farabi.jpg from the repo, otherwise device copy */
+const pic=$('#pic');
+function hideOrn(){$('#orn').style.display='none'}
+pic.onload=()=>{pic.hidden=false;hideOrn();$('#picBtn').parentElement.style.display='none'};
+pic.onerror=()=>{pic.remove();showPic()};
+if(pic.complete){if(pic.naturalWidth)pic.onload();else pic.onerror()}
+function showPic(){const d=store.get('farabi-pic');if(d){let img=$('#portrait img');if(!img){img=document.createElement('img');img.alt='Әл-Фараби портреті';$('#portrait').prepend(img)}img.src=d;hideOrn();$('#picBtn').textContent='Портретті ауыстыру'}}
 $('#picBtn').onclick=()=>$('#picIn').click();
 $('#picIn').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,700/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;c.getContext('2d').drawImage(im,0,0,c.width,c.height);
   if(store.set('farabi-pic',c.toDataURL('image/jpeg',.82)))showPic();else alert('Сурет сақталмады: көлемі тым үлкен.')};im.src=r.result};r.readAsDataURL(f)};
 
-/* Video link */
-function showVid(){const u=store.get('farabi-vid');const ok=u&&/^https?:\/\//i.test(u);$('#vidShow').hidden=!ok;$('#vidEdit').hidden=!!ok;$('#vidEmpty').hidden=!!ok;if(ok)$('#vidLink').href=u}
-showVid();
-$('#vidSave').onclick=()=>{const u=$('#vidIn').value.trim();if(!/^https?:\/\//i.test(u)){alert('Сілтеме https:// деп басталуы керек.');return}store.set('farabi-vid',u);showVid()};
-$('#vidEditBtn').onclick=()=>{$('#vidIn').value=store.get('farabi-vid')||'';$('#vidShow').hidden=true;$('#vidEdit').hidden=false};
+async function fileText(name){try{const r=await fetch(name,{cache:'no-cache'});if(!r.ok)return '';const t=(await r.text()).trim();return /<html/i.test(t)?'':t}catch(e){return ''}}
 
-/* Poem */
+/* Poem: poem.txt from the repo, otherwise device copy */
+let POEM='';
+const getPoem=()=>POEM||store.get('farabi-poem')||'';
 const pv=$('#poemView'),pe=$('#poemEdit'),pt=$('#poemText'),pb=$('#poemBtn'),pc=$('#poemCancel');
 const EMPTY=pv.textContent;
-function showPoem(){const t=store.get('farabi-poem');if(t&&t.trim()){pv.textContent=t;pv.classList.remove('empty');pb.textContent='Мәтінді өңдеу'}else{pv.textContent=EMPTY;pv.classList.add('empty');pb.textContent='Мәтінді енгізу'}}
-showPoem();
+function showPoem(){const t=getPoem();if(t.trim()){pv.textContent=t;pv.classList.remove('empty');pb.textContent='Мәтінді өңдеу'}else{pv.textContent=EMPTY;pv.classList.add('empty');pb.textContent='Мәтінді енгізу'}if(POEM)pb.parentElement.hidden=true}
 pb.onclick=()=>{if(pe.hidden){pt.value=store.get('farabi-poem')||'';pe.hidden=false;pv.hidden=true;pc.hidden=false;pb.textContent='Сақтау';pt.focus()}
   else{store.set('farabi-poem',pt.value);pe.hidden=true;pv.hidden=false;pc.hidden=true;showPoem()}};
 pc.onclick=()=>{pe.hidden=true;pv.hidden=false;pc.hidden=true;showPoem()};
+showPoem();
+(async()=>{
+  const t=await fileText('poem.txt');if(t){POEM=t;showPoem()}
+})();
 
 /* Analyzer */
 const V='аәеиоөұүыіэюяё';
 function syl(line){const s=line.toLowerCase().replace(/[^а-яәғқңөұүһіё\s-]/g,'');let n=0;for(let i=0;i<s.length;i++){const ch=s[i];if(V.includes(ch))n++;else if(ch==='у'&&!V.includes(s[i-1]||' '))n++}return n}
 function tail(line){const w=line.toLowerCase().replace(/[^а-яәғқңөұүһіё\s]/g,' ').trim().split(/\s+/).pop()||'';return w}
-function rhymes(a,b){if(!a||!b)return false;const k=Math.min(3,a.length,b.length);return a.slice(-k)===b.slice(-k)||(a.length>1&&b.length>1&&a.slice(-2)===b.slice(-2))}
-$('#anBtn').onclick=()=>{const t=store.get('farabi-poem')||'';const out=$('#anOut');
+function rhymes(a,b){if(!a||!b)return false;if(a.length>1&&b.length>1&&a.slice(-2)===b.slice(-2))return true;const x=a.slice(-7),y=b.slice(-7);for(let i=0;i+4<=x.length;i++)if(y.includes(x.slice(i,i+4)))return true;return false}
+$('#anBtn').onclick=()=>{const t=getPoem();const out=$('#anOut');
   if(!t.trim()){out.innerHTML='<p class="fb">Алдымен «Кіріспе» бөлімінде өлең мәтінін енгізіңіз.</p>';return}
   let stanzas=t.split(/\n\s*\n/).map(s=>s.split('\n').map(x=>x.trim()).filter(Boolean)).filter(s=>s.length);
   if(stanzas.length===1&&stanzas[0].length>4){const L=stanzas[0];stanzas=[];for(let i=0;i<L.length;i+=4)stanzas.push(L.slice(i,i+4))}
